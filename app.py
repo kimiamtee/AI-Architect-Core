@@ -365,3 +365,75 @@ with tab3:
 # Footer
 st.markdown("---")
 st.caption("🏗️ **AI-Architect-Core** | Powered by OpenRouter API & PyMuPDF")
+
+import json
+
+# ==========================================
+# بخش خروجی‌های حرفه‌ای (در انتهای Tab 2 یا Tab 3 اضافه می‌شود)
+# ==========================================
+st.markdown("---")
+st.subheader("📥 Export & Rhino/Grasshopper Integration")
+
+col_exp1, col_exp2 = st.columns(2)
+
+# ۱. ساخت فایل JSON اختصاصی برای گراس‌هاپر
+grasshopper_data = {
+    "project_name": "Villa Feasibility Analysis",
+    "site_parameters": {
+        "plot_width": plot_w,
+        "plot_length": plot_l,
+        "plot_area": plot_area
+    },
+    "building_envelope": {
+        "net_width": net_w,
+        "net_length": net_l,
+        "floors_count": target_floors,
+        "floor_height": 3.5,
+        "total_height": target_floors * 3.5,
+        "ground_footprint": footprint_area,
+        "total_gfa": total_gfa
+    },
+    "setbacks": {
+        "front": front_sb,
+        "rear": rear_sb,
+        "sides": side_sb
+    }
+}
+
+# تبدیل به رشته JSON
+json_string = json.dumps(grasshopper_data, indent=4)
+
+with col_exp1:
+    st.download_button(
+        label="🦏 Download Grasshopper JSON Parameter File",
+        file_name="zoning_params.json",
+        mime="application/json",
+        data=json_string,
+        help="Import this JSON directly into Grasshopper to generate 3D geometry in Rhino!"
+    )
+
+# ۲. دانلود گزارش متنی آنالیز
+if st.session_state.current_analysis:
+    report_text = f"""==================================================
+AI-ARCHITECT-CORE: EXECUTIVE FEASIBILITY REPORT
+Timestamp: {st.session_state.current_analysis['timestamp']}
+==================================================
+
+[1] ZONING AUDIT ANALYSIS:
+{st.session_state.current_analysis['response']}
+
+==================================================
+[2] CALCULATED METRICS:
+- Total Plot Area: {plot_area:.0f} sqm
+- Net Building Dimensions: {net_w:.1f}m x {net_l:.1f}m
+- Footprint Area: {footprint_area:.0f} sqm ({coverage_pct:.1f}% coverage)
+- Total GFA: {total_gfa:.0f} sqm ({target_floors} Floors)
+==================================================
+"""
+    with col_exp2:
+        st.download_button(
+            label="📄 Download Executive Audit Report (.txt)",
+            file_name="Zoning_Feasibility_Report.txt",
+            mime="text/plain",
+            data=report_text
+        )
