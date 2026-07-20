@@ -3,3 +3,5 @@ pypdf
 requests
 numpy
 matplotlib
+pdfplumber
+pypdf
