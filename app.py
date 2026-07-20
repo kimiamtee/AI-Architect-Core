@@ -22,40 +22,61 @@ uploaded_file = st.file_uploader("Upload Zoning PDF", type=["pdf"])
 
 pdf_text = ""
 if uploaded_file is not None:
-    reader = pypdf.PdfReader(uploaded_file)
-    for page in reader.pages:
-        pdf_text += page.extract_text()
-    st.success("✅ PDF Uploaded and Parsed Successfully!")
+    try:
+        reader = pypdf.PdfReader(uploaded_file)
+        for page in reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+                pdf_text += extracted
+        st.success("✅ PDF Uploaded and Parsed Successfully!")
+    except Exception as e:
+        st.error(f"Error reading PDF: {e}")
 
 # ۳. بخش پرسش و پاسخ چت از فایل
 user_query = st.text_input("Ask a question about zoning laws (e.g., FAR, Height, Setbacks, Parking):")
 
 if st.button("Analyze & Answer"):
     if not api_key:
-        st.error("Please enter your OpenRouter API Key in the sidebar!")
+        st.error("⚠️ Please enter your OpenRouter API Key in the sidebar on the left!")
     elif not pdf_text:
-        st.error("Please upload a PDF file first!")
+        st.error("⚠️ Please upload a valid PDF file first!")
+    elif not user_query:
+        st.error("⚠️ Please type a question in the box above!")
     else:
-        with st.spinner("AI is analyzing the document..."):
+        with st.spinner("🤖 AI is analyzing the zoning document..."):
             url = "https://openrouter.ai/api/v1/chat/completions"
             headers = {
-                "Authorization": f"Bearer {api_key}",
+                "Authorization": f"Bearer {api_key.strip()}",
                 "Content-Type": "application/json",
-                "HTTP-Referer": "https://streamlit.io"
+                "HTTP-Referer": "https://streamlit.io",
+                "X-Title": "AI Architecture RAG"
             }
-            prompt = f"You are an AI Zoning Auditor. Read this document text and answer strictly based on facts:\n\n{pdf_text}\n\nQuestion: {user_query}"
+            
+            # ارسال متن PDF (محدود به ۵۰۰۰ کاراکتر اول برای جلوگیری از سنگین شدن)
+            prompt = f"You are an AI Zoning Auditor. Read this document text and answer strictly based on facts:\n\n{pdf_text[:5000]}\n\nQuestion: {user_query}"
+            
             payload = {
                 "model": "openai/gpt-4o-mini",
                 "messages": [{"role": "user", "content": prompt}],
                 "temperature": 0.1
             }
+            
             try:
-                res = requests.post(url, headers=headers, json=payload).json()
-                answer = res['choices'][0]['message']['content']
-                st.subheader("🤖 AI Auditor Response:")
-                st.write(answer)
+                response = requests.post(url, headers=headers, json=payload)
+                res_json = response.json()
+                
+                if "choices" in res_json and len(res_json["choices"]) > 0:
+                    answer = res_json['choices'][0]['message']['content']
+                    st.subheader("🤖 AI Auditor Response:")
+                    st.success(answer)
+                elif "error" in res_json:
+                    st.error(f"❌ OpenRouter API Error: {res_json['error'].get('message', res_json['error'])}")
+                else:
+                    st.warning("⚠️ Received an empty or unrecognized response from AI server.")
+                    st.json(res_json)
+                    
             except Exception as e:
-                st.error(f"Error connecting to AI API: {e}")
+                st.error(f"❌ Connection Error: {e}")
 
 st.divider()
 
