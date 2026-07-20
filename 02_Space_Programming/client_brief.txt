@@ -1,0 +1,3 @@
+We need a design for a luxury residential apartment. The total available area is 150 square meters. 
+The client wants a spacious Master Bedroom, two smaller kids' bedrooms, a large Living Room for family gatherings, 
+a modern Kitchen, and two Bathrooms.
