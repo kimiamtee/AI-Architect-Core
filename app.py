@@ -24,11 +24,12 @@ pdf_text = ""
 if uploaded_file is not None:
     try:
         reader = pypdf.PdfReader(uploaded_file)
-        for page in reader.pages:
+        # خواندن تمام صفحات PDF
+        for i, page in enumerate(reader.pages):
             extracted = page.extract_text()
             if extracted:
-                pdf_text += extracted
-        st.success("✅ PDF Uploaded and Parsed Successfully!")
+                pdf_text += f"\n--- Page {i+1} ---\n" + extracted
+        st.success(f"✅ PDF Uploaded and Parsed Successfully! ({len(reader.pages)} pages extracted)")
     except Exception as e:
         st.error(f"Error reading PDF: {e}")
 
@@ -43,7 +44,7 @@ if st.button("Analyze & Answer"):
     elif not user_query:
         st.error("⚠️ Please type a question in the box above!")
     else:
-        with st.spinner("🤖 AI is analyzing the zoning document..."):
+        with st.spinner("🤖 AI is searching the whole zoning document..."):
             url = "https://openrouter.ai/api/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {api_key.strip()}",
@@ -52,8 +53,18 @@ if st.button("Analyze & Answer"):
                 "X-Title": "AI Architecture RAG"
             }
             
-            # ارسال متن PDF (محدود به ۵۰۰۰ کاراکتر اول برای جلوگیری از سنگین شدن)
-            prompt = f"You are an AI Zoning Auditor. Read this document text and answer strictly based on facts:\n\n{pdf_text[:5000]}\n\nQuestion: {user_query}"
+            # ارسال تا ۱۵,۰۰۰ کاراکتر برای پوشش دادن کل دفترچه
+            prompt = f"""
+You are an expert AI Zoning Auditor. Read the whole provided document text carefully. 
+Extract exact numerical facts for FAR, Maximum Height, Setbacks, and Parking requirements if available. 
+If specific numbers are in tables, summarize them accurately.
+
+Document Text:
+{pdf_text[:15000]}
+
+User Question:
+{user_query}
+"""
             
             payload = {
                 "model": "openai/gpt-4o-mini",
@@ -72,7 +83,7 @@ if st.button("Analyze & Answer"):
                 elif "error" in res_json:
                     st.error(f"❌ OpenRouter API Error: {res_json['error'].get('message', res_json['error'])}")
                 else:
-                    st.warning("⚠️ Received an empty or unrecognized response from AI server.")
+                    st.warning("⚠️ Received an unrecognized response from AI server.")
                     st.json(res_json)
                     
             except Exception as e:
