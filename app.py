@@ -2,7 +2,6 @@ import streamlit as st
 import pypdf
 import requests
 import json
-import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
@@ -16,30 +15,27 @@ st.write("Upload municipal zoning documents, query zoning laws, and generate aut
 st.sidebar.header("🔑 Configuration")
 api_key = st.sidebar.text_input("Enter OpenRouter API Key", type="password")
 
-import pdfplumber
-
-# ۲. بخش آپلود فایل PDF ضوابط (هوشمند برای متون و اسکن‌ها)
+# ۲. بخش آپلود فایل PDF ضوابط
 st.header("📄 1. Document Zoning Analysis (RAG)")
 uploaded_file = st.file_uploader("Upload Zoning PDF", type=["pdf"])
 
 pdf_text = ""
 if uploaded_file is not None:
     try:
-        # ابتدا با pdfplumber تلاش برای خواندن دقیق می‌کنیم
-        with pdfplumber.open(uploaded_file) as pdf:
-            for i, page in enumerate(pdf.pages):
-                text = page.extract_text()
-                if text:
-                    pdf_text += f"\n--- Page {i+1} ---\n" + text
-        
-        # اگر متن استخراج شد
+        reader = pypdf.PdfReader(uploaded_file)
+        # خواندن تمامی صفحات بدون پارامترهای تداخل‌زا
+        for i, page in enumerate(reader.pages):
+            text = page.extract_text()
+            if text:
+                pdf_text += f"\n--- Page {i+1} ---\n" + text
+                
         if len(pdf_text.strip()) > 0:
-            st.success(f"✅ PDF Parsed Successfully! ({len(pdf_text)} characters extracted)")
+            st.success(f"✅ PDF Uploaded and Parsed Successfully! ({len(reader.pages)} pages extracted)")
         else:
-            st.error("⚠️ این فایل PDF به‌صورت عکس/اسکن است و متن قابل کپی ندارد. لطفاً یک PDF متنی آپلود کنید یا نسخه فشرده متن را قرار دهید.")
+            st.warning("⚠️ فایل آپلود شد اما متنی درون آن یافت نشد (احتمالاً فایل اسکن‌شده یا تصویری است).")
             
     except Exception as e:
-        st.error(f"Error reading PDF: {e}")
+        st.error(f"❌ Error reading PDF: {e}")
 
 # ۳. بخش پرسش و پاسخ چت از فایل
 user_query = st.text_input("Ask a question about zoning laws (e.g., FAR, Height, Setbacks, Parking):")
@@ -48,11 +44,11 @@ if st.button("Analyze & Answer"):
     if not api_key:
         st.error("⚠️ Please enter your OpenRouter API Key in the sidebar on the left!")
     elif not pdf_text:
-        st.error("⚠️ Please upload a valid PDF file first!")
+        st.error("⚠️ Please upload a valid text-based PDF file first!")
     elif not user_query:
         st.error("⚠️ Please type a question in the box above!")
     else:
-        with st.spinner("🤖 AI is searching the whole zoning document..."):
+        with st.spinner("🤖 AI is searching the zoning document..."):
             url = "https://openrouter.ai/api/v1/chat/completions"
             headers = {
                 "Authorization": f"Bearer {api_key.strip()}",
@@ -61,14 +57,13 @@ if st.button("Analyze & Answer"):
                 "X-Title": "AI Architecture RAG"
             }
             
-            # ارسال تا ۱۵,۰۰۰ کاراکتر برای پوشش دادن کل دفترچه
             prompt = f"""
-You are an expert AI Zoning Auditor. Read the whole provided document text carefully. 
-Extract exact numerical facts for FAR, Maximum Height, Setbacks, and Parking requirements if available. 
-If specific numbers are in tables, summarize them accurately.
+You are an expert AI Zoning Auditor. Read the provided document text carefully. 
+Answer the user's question accurately with facts, numbers, and units from the text. 
+Respond in the language requested by the user.
 
 Document Text:
-{pdf_text[:15000]}
+{pdf_text[:12000]}
 
 User Question:
 {user_query}
@@ -92,7 +87,6 @@ User Question:
                     st.error(f"❌ OpenRouter API Error: {res_json['error'].get('message', res_json['error'])}")
                 else:
                     st.warning("⚠️ Received an unrecognized response from AI server.")
-                    st.json(res_json)
                     
             except Exception as e:
                 st.error(f"❌ Connection Error: {e}")
