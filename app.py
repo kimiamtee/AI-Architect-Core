@@ -16,20 +16,28 @@ st.write("Upload municipal zoning documents, query zoning laws, and generate aut
 st.sidebar.header("🔑 Configuration")
 api_key = st.sidebar.text_input("Enter OpenRouter API Key", type="password")
 
-# ۲. بخش آپلود فایل PDF ضوابط
+import pdfplumber
+
+# ۲. بخش آپلود فایل PDF ضوابط (هوشمند برای متون و اسکن‌ها)
 st.header("📄 1. Document Zoning Analysis (RAG)")
 uploaded_file = st.file_uploader("Upload Zoning PDF", type=["pdf"])
 
 pdf_text = ""
 if uploaded_file is not None:
     try:
-        reader = pypdf.PdfReader(uploaded_file)
-        # خواندن تمام صفحات PDF
-        for i, page in enumerate(reader.pages):
-            extracted = page.extract_text()
-            if extracted:
-                pdf_text += f"\n--- Page {i+1} ---\n" + extracted
-        st.success(f"✅ PDF Uploaded and Parsed Successfully! ({len(reader.pages)} pages extracted)")
+        # ابتدا با pdfplumber تلاش برای خواندن دقیق می‌کنیم
+        with pdfplumber.open(uploaded_file) as pdf:
+            for i, page in enumerate(pdf.pages):
+                text = page.extract_text()
+                if text:
+                    pdf_text += f"\n--- Page {i+1} ---\n" + text
+        
+        # اگر متن استخراج شد
+        if len(pdf_text.strip()) > 0:
+            st.success(f"✅ PDF Parsed Successfully! ({len(pdf_text)} characters extracted)")
+        else:
+            st.error("⚠️ این فایل PDF به‌صورت عکس/اسکن است و متن قابل کپی ندارد. لطفاً یک PDF متنی آپلود کنید یا نسخه فشرده متن را قرار دهید.")
+            
     except Exception as e:
         st.error(f"Error reading PDF: {e}")
 
