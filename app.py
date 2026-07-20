@@ -256,9 +256,10 @@ with tab1:
             except Exception as e:
                 st.error(f"❌ Error: {str(e)}")
 
-    user_query = st.text_input(
+    user_query = st.text_area(
         "❓ Ask about Zoning Rules / Plot Info:",
-        placeholder="e.g., Plot is 15x20m. What are allowable setbacks, footprint, max height, and floors?"
+        height=140,
+        placeholder="e.g., I am evaluating a residential plot measuring 20m x 35m..."
     )
 
     c_btn1, c_btn2 = st.columns([1, 5])
